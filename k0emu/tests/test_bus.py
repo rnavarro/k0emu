@@ -3,6 +3,16 @@ from k0emu.bus import Bus
 from k0emu.devices import MemoryDevice
 
 
+class _WaitingDevice(MemoryDevice):
+    def __init__(self, name, size):
+        MemoryDevice.__init__(self, name, size=size)
+        self.calls = []
+
+    def wait_cycles(self, register, write):
+        self.calls.append((register, write))
+        return 3 if write else 5
+
+
 class _FakeProcessor:
     def __init__(self):
         self.reset_count = 0
@@ -250,4 +260,27 @@ class BusTests(unittest.TestCase):
         entries = bus.memory_map()
         self.assertIs(entries[1][2], mem)
 
+    # wait cycles
 
+    def test_wait_cycles_unmapped_is_zero(self):
+        proc = _FakeProcessor()
+        bus = Bus(proc)
+        self.assertEqual(bus.wait_cycles(0x0000, False), 0)
+        self.assertEqual(bus.wait_cycles(0x0000, True), 0)
+
+    def test_wait_cycles_default_device_is_zero(self):
+        proc = _FakeProcessor()
+        bus = Bus(proc)
+        mem = MemoryDevice("ram", size=4)
+        bus.add_device(mem, (0x1000, 0x1003))
+        self.assertEqual(bus.wait_cycles(0x1002, False), 0)
+        self.assertEqual(bus.wait_cycles(0x1002, True), 0)
+
+    def test_wait_cycles_routes_to_device_register(self):
+        proc = _FakeProcessor()
+        bus = Bus(proc)
+        dev = _WaitingDevice("waiting", size=3)
+        bus.add_device(dev, (0x1000, 0x1000), (0x2000, 0x2001))
+        self.assertEqual(bus.wait_cycles(0x2001, False), 5)
+        self.assertEqual(bus.wait_cycles(0x2000, True), 3)
+        self.assertEqual(dev.calls, [(2, False), (1, True)])

@@ -1,5 +1,9 @@
 ## 2.0.1.dev0 (Next Release)
 
+- Added `BaseDevice.wait_cycles()` so a device can insert wait clocks
+  when a register is accessed.  The processor adds them to the
+  instruction's cycle count.
+
 ## 2.0.0 (2026-04-30)
 
 - Dropped support for Python versions below 3.8.

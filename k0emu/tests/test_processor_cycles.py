@@ -1,5 +1,5 @@
 import unittest
-from k0emu.devices import MemoryDevice
+from k0emu.devices import MemoryDevice, BaseDevice
 from k0emu.processor import Processor, Registers, RegisterPairs, Flags
 
 
@@ -2067,3 +2067,54 @@ class CycleCountTests(unittest.TestCase):
         self.assertEqual(proc.total_cycles, 7)
 
 
+class _WaitingDevice(BaseDevice):
+    """Inserts 4 wait clocks on reads and 9 on writes."""
+    def __init__(self, name):
+        BaseDevice.__init__(self, name)
+        self.size = 1
+
+    def wait_cycles(self, register, write):
+        return 9 if write else 4
+
+
+def _make_processor_with_waiting_sfr():
+    proc = Processor()
+    mem = MemoryDevice("test_memory", size=0xFB00)
+    proc.bus.add_device(mem, (0x0000, 0xFAFF))
+    fast = MemoryDevice("fast_memory", size=0x0400, high_speed=True)
+    proc.bus.add_device(fast, (0xFB00, 0xFEFF))
+    sfr = MemoryDevice("sfr_memory", size=0x00FF)
+    proc.bus.add_device(sfr, (0xFF00, 0xFFFD), (0xFFFF, 0xFFFF))
+    proc.bus.add_device(_WaitingDevice("waiting"), (0xFFFE, 0xFFFE))
+    return proc
+
+
+class WaitCycleTests(unittest.TestCase):
+    """Device wait clocks are added to the instruction's cycle count."""
+
+    # mov sfr,#byte                  ;13 (no wait)
+    def test_write_without_wait(self):
+        proc = _make_processor_with_waiting_sfr()
+        proc.write_memory_bytes(0, [0x13, 0xfd, 0x42])
+        proc.step()
+        self.assertEqual(proc.total_cycles, 7)
+
+    # mov sfr,#byte                  ;13 (write wait)
+    def test_write_adds_device_wait(self):
+        proc = _make_processor_with_waiting_sfr()
+        proc.write_memory_bytes(0, [0x13, 0xfe, 0x42])
+        proc.step()
+        self.assertEqual(proc.total_cycles, 7 + 9)
+
+    # mov a,sfr                      ;f4 (read wait)
+    def test_read_adds_device_wait(self):
+        proc = _make_processor_with_waiting_sfr()
+        proc.write_memory_bytes(0, [0xf4, 0xfe])
+        proc.step()
+        self.assertEqual(proc.total_cycles, 5 + 4)
+
+    def test_wait_does_not_change_high_speed_ram_cycles(self):
+        proc = _make_processor_with_waiting_sfr()
+        proc.write_memory_bytes(0, [0xf0, 0x20])  # mov a,saddr (FE20)
+        proc.step()
+        self.assertEqual(proc.total_cycles, 4)

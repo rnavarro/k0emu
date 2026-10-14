@@ -109,18 +109,22 @@ class Processor:
 
     def _bus_read(self, address):
         """Read a data operand byte via the bus.  Costs 1 bus clock
-        plus a penalty for non-high-speed devices."""
+        plus a penalty for non-high-speed devices, plus any wait
+        clocks the device inserts."""
         self._inst_cycles += 1
         if not self.bus.is_high_speed(address):
             self._inst_cycles += 1
+        self._inst_cycles += self.bus.wait_cycles(address, False)
         return self.bus.read(address)
 
     def _bus_write(self, address, value):
         """Write a data operand byte via the bus.  Costs 1 bus clock
-        plus a penalty for non-high-speed devices."""
+        plus a penalty for non-high-speed devices, plus any wait
+        clocks the device inserts."""
         self._inst_cycles += 1
         if not self.bus.is_high_speed(address):
             self._inst_cycles += 1
+        self._inst_cycles += self.bus.wait_cycles(address, True)
         self.bus.write(address, value)
 
     def _init_opcodes(self):

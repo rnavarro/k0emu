@@ -91,6 +91,13 @@ class Bus:
     def is_high_speed(self, address):
         return self._devices_by_address[address].high_speed
 
+    def wait_cycles(self, address, write):
+        """Return the extra clocks the device at the address inserts
+        when it is read (write=False) or written (write=True)."""
+        device = self._devices_by_address[address]
+        register = self._device_registers_by_address[address]
+        return device.wait_cycles(register, write)
+
     def read(self, address):
         device = self._devices_by_address[address]
         register = self._device_registers_by_address[address]

@@ -29,6 +29,13 @@ class BaseDevice:
     def tick(self, cycles):
         self.ticks += cycles
 
+    def wait_cycles(self, register, write):
+        """Return the number of extra clocks the processor waits when it
+        accesses this register.  Some peripheral registers insert wait
+        states that depend on the peripheral's state (for example an A/D
+        converter clocked slower than the CPU).  Default: no wait."""
+        return 0
+
 
 class MemoryDevice(BaseDevice):
     """A generic read/write memory device (RAM or ROM).
