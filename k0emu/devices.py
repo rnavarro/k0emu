@@ -873,11 +873,11 @@ class InterruptControllerDevice(BaseDevice):
 
     def connect(self, device, device_int, source_index):
         """Connect a device interrupt to a source channel."""
-        self._connections[(id(device), device_int)] = source_index
+        self._connections[(device, device_int)] = source_index
 
     def interrupt(self, device, device_int):
         """Set the IF flag for a connected device interrupt."""
-        source_index = self._connections[(id(device), device_int)]
+        source_index = self._connections[(device, device_int)]
         reg_offset, bit, vector = self._SOURCES[source_index]
         self._regs[reg_offset] |= bit
 

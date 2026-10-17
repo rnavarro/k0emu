@@ -1,3 +1,4 @@
+import copy
 import unittest
 from k0emu.bus import Bus
 from k0emu.devices import (MemoryDevice, RegisterFileDevice,
@@ -275,6 +276,13 @@ class InterruptControllerDeviceTests(unittest.TestCase):
         intc, dev = _make_intc_on_bus()
         intc.interrupt(dev, _DummyDevice.INT_0)
         self.assertEqual(intc.read(InterruptControllerDevice.IF0L) & 0x02, 0x02)
+
+    def test_interrupt_works_after_deepcopy(self):
+        intc, dev = _make_intc_on_bus()
+        intc_copy, dev_copy = copy.deepcopy((intc, dev))
+        intc_copy.interrupt(dev_copy, _DummyDevice.INT_0)
+        self.assertEqual(intc_copy.read(InterruptControllerDevice.IF0L) & 0x02, 0x02)
+        self.assertEqual(intc.read(InterruptControllerDevice.IF0L) & 0x02, 0x00)
 
     def test_interrupt_preserves_other_bits(self):
         intc, dev = _make_intc_on_bus()
